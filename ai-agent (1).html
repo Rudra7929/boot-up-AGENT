@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boot-up — AI Engineering Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --neon: #00ffcc;
+    --neon2: #ff6b35;
+    --dark: #050810;
+    --panel: #080d1a;
+    --border: rgba(0,255,204,0.2);
+    --glow: 0 0 20px rgba(0,255,204,0.3);
+    --text: #c8e6ff;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--dark);
+    font-family: 'Rajdhani', sans-serif;
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    background: rgba(0,255,204,0.03);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 22px;
+    font-weight: 900;
+    color: var(--neon);
+    text-shadow: var(--glow);
+    letter-spacing: 4px;
+  }
+  .logo span { color: var(--neon2); }
+  .status-bar {
+    display: flex;
+    gap: 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: rgba(0,255,204,0.6);
+  }
+  .dot { display: inline-block; width:6px; height:6px; border-radius:50%; background:var(--neon); animation: pulse 2s infinite; margin-right:5px; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* MAIN LAYOUT */
+  main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* LEFT PANEL — 3D ROBOT */
+  .left-panel {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 30% 20%, rgba(0,100,80,0.08) 0%, transparent 60%);
+    min-height: 0;
+  }
+
+  .panel-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--neon);
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 3px;
+    background: rgba(0,255,204,0.02);
+    flex-shrink: 0;
+  }
+
+  /* 3D Canvas Area */
+  #robot-canvas {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  canvas#three-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Board Search */
+  .board-search {
+    flex-shrink: 0;
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+    background: rgba(0,10,20,0.8);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .board-search label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--neon);
+    white-space: nowrap;
+  }
+  .board-input {
+    flex: 1;
+    background: rgba(0,255,204,0.05);
+    border: 1px solid var(--border);
+    color: var(--neon);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+    border-radius: 2px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .board-input:focus {
+    border-color: var(--neon);
+    box-shadow: 0 0 15px rgba(0,255,204,0.2);
+  }
+  .board-input::placeholder { color: rgba(0,255,204,0.3); }
+  .load-btn {
+    background: transparent;
+    border: 1px solid var(--neon);
+    color: var(--neon);
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    padding: 8px 16px;
+    cursor: pointer;
+    letter-spacing: 2px;
+    transition: all 0.3s;
+  }
+  .load-btn:hover {
+    background: var(--neon);
+    color: var(--dark);
+    box-shadow: var(--glow);
+  }
+
+  /* Board info overlay */
+  .board-info {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    padding: 12px 16px;
+    background: linear-gradient(transparent, rgba(5,8,16,0.95));
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: rgba(0,255,204,0.7);
+    pointer-events: none;
+    z-index: 10;
+  }
+  .board-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 16px;
+    color: var(--neon);
+    text-shadow: var(--glow);
+    margin-bottom: 4px;
+  }
+  .board-specs { opacity: 0.7; line-height: 1.6; }
+
+  /* RIGHT PANEL — AI AGENT */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    background: radial-gradient(ellipse at 70% 80%, rgba(255,107,53,0.05) 0%, transparent 60%);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .chat-area {
+    flex: 1;
+    overflow-y: scroll;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    scroll-behavior: smooth;
+    min-height: 0;
+  }
+  .chat-area::-webkit-scrollbar { width: 6px; }
+  .chat-area::-webkit-scrollbar-track { background: rgba(0,255,204,0.03); border-radius: 3px; }
+  .chat-area::-webkit-scrollbar-thumb { background: rgba(0,255,204,0.25); border-radius: 3px; }
+  .chat-area::-webkit-scrollbar-thumb:hover { background: rgba(0,255,204,0.5); }
+
+  .msg {
+    max-width: 88%;
+    padding: 12px 16px;
+    border-radius: 2px;
+    font-size: 14px;
+    line-height: 1.6;
+    animation: fadeSlide 0.3s ease;
+  }
+  @keyframes fadeSlide { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  .msg.agent {
+    align-self: flex-start;
+    background: rgba(0,255,204,0.05);
+    border: 1px solid rgba(0,255,204,0.15);
+    border-left: 3px solid var(--neon);
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: rgba(255,107,53,0.08);
+    border: 1px solid rgba(255,107,53,0.2);
+    border-right: 3px solid var(--neon2);
+  }
+  .msg-header {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .msg.agent .msg-header { color: var(--neon); }
+  .msg.user .msg-header { color: var(--neon2); justify-content: flex-end; }
+
+  .typing-indicator {
+    display: none;
+    align-self: flex-start;
+    padding: 14px 18px;
+    background: rgba(0,255,204,0.04);
+    border: 1px solid rgba(0,255,204,0.15);
+    border-left: 3px solid var(--neon);
+  }
+  .typing-dots { display: flex; gap: 5px; }
+  .typing-dots span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--neon);
+    animation: bounce 1.4s infinite;
+  }
+  .typing-dots span:nth-child(2){animation-delay:.2s}
+  .typing-dots span:nth-child(3){animation-delay:.4s}
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+  /* Input */
+  .input-area {
+    flex-shrink: 0;
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+    background: rgba(0,10,20,0.8);
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  .chat-input {
+    flex: 1;
+    background: rgba(0,255,204,0.04);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    resize: none;
+    min-height: 42px;
+    max-height: 120px;
+    border-radius: 2px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    line-height: 1.4;
+  }
+  .chat-input:focus {
+    border-color: rgba(0,255,204,0.5);
+    box-shadow: 0 0 12px rgba(0,255,204,0.1);
+  }
+  .chat-input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .chat-input::placeholder { color: rgba(200,230,255,0.25); }
+  .send-btn {
+    background: linear-gradient(135deg, rgba(0,255,204,0.15), rgba(0,255,204,0.05));
+    border: 1px solid var(--neon);
+    color: var(--neon);
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    letter-spacing: 2px;
+    transition: all 0.3s;
+    height: 42px;
+  }
+  .send-btn:hover {
+    background: var(--neon);
+    color: var(--dark);
+    box-shadow: var(--glow);
+  }
+  .send-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Grid background lines */
+  .grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,204,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,204,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Scanlines */
+  .scanlines {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .corner-deco {
+    position: absolute;
+    width: 20px; height: 20px;
+    border-color: var(--neon);
+    border-style: solid;
+    opacity: 0.4;
+  }
+  .corner-deco.tl { top:8px; left:8px; border-width: 2px 0 0 2px; }
+  .corner-deco.tr { top:8px; right:8px; border-width: 2px 2px 0 0; }
+  .corner-deco.bl { bottom:8px; left:8px; border-width: 0 0 2px 2px; }
+  .corner-deco.br { bottom:8px; right:8px; border-width: 0 2px 2px 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">BOOT<span>-UP</span> <span style="font-size:12px;color:rgba(0,255,204,0.5);letter-spacing:1px">/ AI ENGINEERING AGENT</span></div>
+  <div class="status-bar">
+    <span><span class="dot"></span>ONLINE</span>
+    <span>MODEL: GPT-4o</span>
+    <span>SYS: NOMINAL</span>
+    <span id="clock"></span>
+  </div>
+</header>
+
+<main>
+  <!-- LEFT: 3D Robot + Board Viewer -->
+  <div class="left-panel">
+    <div class="panel-label">// HARDWARE SIMULATION ENGINE v2.4</div>
+    <div id="robot-canvas">
+      <div class="grid-bg"></div>
+      <div class="scanlines"></div>
+      <div class="corner-deco tl"></div>
+      <div class="corner-deco tr"></div>
+      <div class="corner-deco bl"></div>
+      <div class="corner-deco br"></div>
+      <canvas id="three-canvas"></canvas>
+      <div class="board-info" id="board-info">
+        <div class="board-title" id="board-title">BOOT-UP ROBOTICS SYSTEM</div>
+        <div class="board-specs" id="board-specs">MCU: ARM Cortex-M7 · 480MHz · 2MB Flash · Hover to inspect</div>
+      </div>
+    </div>
+    <div class="board-search">
+      <label>LOAD BOARD ›</label>
+      <input class="board-input" id="boardInput" type="text" placeholder="Arduino Uno, Mega, Nano, ESP32..." autocomplete="off" />
+      <button class="load-btn" onclick="loadBoard()">SIMULATE</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: AI Chat Agent -->
+  <div class="right-panel">
+    <div class="panel-label">// AI AGENT — ENGINEERING ASSISTANT</div>
+    <div class="chat-area" id="chatArea">
+      <div class="msg agent">
+        <div class="msg-header"><span class="dot"></span> BOOT-UP AGENT · ONLINE</div>
+        Hello! I'm your AI engineering assistant. I specialize in Arduino, robotics, electronics, and embedded systems. Ask me anything — or type a board name on the left to load its 3D simulation.
+      </div>
+    </div>
+    <div class="typing-indicator" id="typing">
+      <div class="msg-header" style="color:var(--neon);font-family:'Share Tech Mono',monospace;font-size:10px;margin-bottom:6px"><span class="dot"></span> BOOT-UP AGENT · PROCESSING</div>
+      <div class="typing-dots"><span></span><span></span><span></span></div>
+    </div>
+    <div class="input-area">
+      <textarea class="chat-input" id="chatInput" placeholder="Ask about Arduino, robotics, sensors, circuits..." rows="1"></textarea>
+      <button class="send-btn" onclick="sendMessage()">SEND ›</button>
+    </div>
+  </div>
+</main>
+
+<!-- Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// =====================
+// CLOCK
+// =====================
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US', {hour12:false});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// =====================
+// THREE.JS 3D SCENE
+// =====================
+const canvas = document.getElementById('three-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+camera.position.set(0, 2, 7);
+camera.lookAt(0, 0, 0);
+
+// Lighting
+const ambientLight = new THREE.AmbientLight(0x001122, 0.8);
+scene.add(ambientLight);
+
+const neonLight = new THREE.PointLight(0x00ffcc, 3, 20);
+neonLight.position.set(3, 4, 3);
+neonLight.castShadow = true;
+scene.add(neonLight);
+
+const rimLight = new THREE.PointLight(0xff6b35, 1.5, 15);
+rimLight.position.set(-3, 2, -2);
+scene.add(rimLight);
+
+const topLight = new THREE.DirectionalLight(0x4488ff, 0.5);
+topLight.position.set(0, 10, 0);
+scene.add(topLight);
+
+// Materials
+const pcbMat = new THREE.MeshStandardMaterial({ color: 0x0a3d1e, roughness: 0.4, metalness: 0.3 });
+const chipMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.5, metalness: 0.7 });
+const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.2, metalness: 0.9 });
+const silverMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.3, metalness: 0.8 });
+const neonMat = new THREE.MeshStandardMaterial({ color: 0x00ffcc, emissive: 0x00ffcc, emissiveIntensity: 0.6, roughness: 0.1 });
+const orangeMat = new THREE.MeshStandardMaterial({ color: 0xff6b35, emissive: 0xff6b35, emissiveIntensity: 0.4, roughness: 0.2 });
+const blueMat = new THREE.MeshStandardMaterial({ color: 0x2244ff, emissive: 0x0022ff, emissiveIntensity: 0.3, roughness: 0.2 });
+
+let currentBoard = null;
+let autoRotate = true;
+let currentBoardName = 'default';
+
+// Board definitions
+const BOARDS = {
+  'arduino uno': {
+    title: 'ARDUINO UNO R3',
+    specs: 'ATmega328P · 16MHz · 32KB Flash · 14 Digital I/O · 6 Analog',
+    color: 0x1a5c99,
+    size: [5.4, 0.2, 6.8],
+    shape: 'uno'
+  },
+  'arduino mega': {
+    title: 'ARDUINO MEGA 2560',
+    specs: 'ATmega2560 · 16MHz · 256KB Flash · 54 Digital I/O · 16 Analog',
+    color: 0x1a5c99,
+    size: [5.3, 0.2, 10.1],
+    shape: 'mega'
+  },
+  'arduino nano': {
+    title: 'ARDUINO NANO',
+    specs: 'ATmega328P · 16MHz · 32KB Flash · 22 I/O · Mini Form Factor',
+    color: 0x1a5c99,
+    size: [1.8, 0.15, 4.3],
+    shape: 'nano'
+  },
+  'arduino pro mini': {
+    title: 'ARDUINO PRO MINI',
+    specs: 'ATmega328P · 8/16MHz · 32KB Flash · Ultra Compact · 3.3V/5V',
+    color: 0x8B0000,
+    size: [1.8, 0.12, 3.3],
+    shape: 'nano'
+  },
+  'arduino due': {
+    title: 'ARDUINO DUE',
+    specs: 'SAM3X8E ARM · 84MHz · 512KB Flash · 54 Digital I/O · USB-OTG',
+    color: 0x006080,
+    size: [5.3, 0.2, 10.1],
+    shape: 'mega'
+  },
+  'arduino leonardo': {
+    title: 'ARDUINO LEONARDO',
+    specs: 'ATmega32U4 · 16MHz · 32KB Flash · Native USB · HID Support',
+    color: 0x006040,
+    size: [4.5, 0.2, 6.8],
+    shape: 'uno'
+  },
+  'arduino micro': {
+    title: 'ARDUINO MICRO',
+    specs: 'ATmega32U4 · 16MHz · 32KB Flash · Native USB · Breadboard-friendly',
+    color: 0x006040,
+    size: [1.8, 0.15, 4.8],
+    shape: 'nano'
+  },
+  'esp32': {
+    title: 'ESP32 DEVKIT',
+    specs: 'Dual-core Xtensa LX6 · 240MHz · 4MB Flash · WiFi+BT · 34 GPIO',
+    color: 0x1a1a1a,
+    size: [2.8, 0.15, 5.2],
+    shape: 'esp32'
+  },
+  'esp8266': {
+    title: 'ESP8266 NodeMCU',
+    specs: 'Xtensa L106 · 80MHz · 4MB Flash · 802.11b/g/n WiFi · 11 GPIO',
+    color: 0x1a1a1a,
+    size: [3.0, 0.15, 5.8],
+    shape: 'esp32'
+  },
+  'raspberry pi pico': {
+    title: 'RASPBERRY PI PICO',
+    specs: 'RP2040 Dual-Core · 133MHz · 264KB SRAM · 26 GPIO · USB 1.1',
+    color: 0x006040,
+    size: [2.1, 0.12, 5.1],
+    shape: 'nano'
+  },
+  'stm32': {
+    title: 'STM32 BLUE PILL',
+    specs: 'STM32F103 · 72MHz · 64KB Flash · 37 GPIO · CAN/USB/SPI/I2C',
+    color: 0x1a1a6e,
+    size: [2.3, 0.12, 5.3],
+    shape: 'nano'
+  },
+};
+
+function matchBoard(name) {
+  const n = name.trim().toLowerCase();
+  for (const key of Object.keys(BOARDS)) {
+    if (n === key || n.includes(key) || key.includes(n)) return BOARDS[key];
+  }
+  return null;
+}
+
+function buildDefaultRobot() {
+  const group = new THREE.Group();
+
+  // Base platform
+  const baseGeo = new THREE.BoxGeometry(4, 0.3, 3);
+  const base = new THREE.Mesh(baseGeo, pcbMat);
+  base.position.y = -1.5;
+  base.castShadow = true;
+  group.add(base);
+
+  // Body
+  const bodyGeo = new THREE.BoxGeometry(2, 2, 1.5);
+  const body = new THREE.Mesh(bodyGeo, new THREE.MeshStandardMaterial({color:0x111122, roughness:0.4, metalness:0.6}));
+  body.position.y = 0.2;
+  body.castShadow = true;
+  group.add(body);
+
+  // Head
+  const headGeo = new THREE.BoxGeometry(1.4, 1, 1.2);
+  const head = new THREE.Mesh(headGeo, new THREE.MeshStandardMaterial({color:0x0a1520, roughness:0.3, metalness:0.7}));
+  head.position.y = 1.7;
+  head.castShadow = true;
+  group.add(head);
+
+  // Eyes
+  [-0.35, 0.35].forEach(x => {
+    const eyeGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.05, 16);
+    const eye = new THREE.Mesh(eyeGeo, neonMat);
+    eye.rotation.x = Math.PI/2;
+    eye.position.set(x, 1.78, 0.63);
+    group.add(eye);
+
+    const glowGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.03, 16);
+    const glow = new THREE.Mesh(glowGeo, new THREE.MeshStandardMaterial({color:0xffffff, emissive:0x00ffcc, emissiveIntensity:2}));
+    glow.rotation.x = Math.PI/2;
+    glow.position.set(x, 1.78, 0.66);
+    group.add(glow);
+  });
+
+  // Antenna
+  const antGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.8, 8);
+  const ant = new THREE.Mesh(antGeo, silverMat);
+  ant.position.set(0, 2.6, 0);
+  group.add(ant);
+  const antTopGeo = new THREE.SphereGeometry(0.08, 8, 8);
+  const antTop = new THREE.Mesh(antTopGeo, neonMat);
+  antTop.position.set(0, 3.05, 0);
+  group.add(antTop);
+
+  // Arms
+  [-1.3, 1.3].forEach((x, i) => {
+    const shoulderGeo = new THREE.SphereGeometry(0.2, 8, 8);
+    const shoulder = new THREE.Mesh(shoulderGeo, silverMat);
+    shoulder.position.set(x, 0.6, 0);
+    group.add(shoulder);
+
+    const armGeo = new THREE.CylinderGeometry(0.12, 0.1, 1.2, 8);
+    const arm = new THREE.Mesh(armGeo, chipMat);
+    arm.position.set(x * 1.3, -0.1, 0);
+    arm.rotation.z = (i === 0 ? -1 : 1) * 0.3;
+    group.add(arm);
+  });
+
+  // Legs
+  [-0.5, 0.5].forEach(x => {
+    const legGeo = new THREE.CylinderGeometry(0.15, 0.12, 1.2, 8);
+    const leg = new THREE.Mesh(legGeo, chipMat);
+    leg.position.set(x, -1.2, 0);
+    group.add(leg);
+
+    const footGeo = new THREE.BoxGeometry(0.4, 0.15, 0.6);
+    const foot = new THREE.Mesh(footGeo, new THREE.MeshStandardMaterial({color:0x1a1a2e, roughness:0.5, metalness:0.7}));
+    foot.position.set(x, -1.9, 0.1);
+    group.add(foot);
+  });
+
+  // Chest panel
+  const panelGeo = new THREE.BoxGeometry(1.2, 0.8, 0.05);
+  const panel = new THREE.Mesh(panelGeo, new THREE.MeshStandardMaterial({color:0x001a10, roughness:0.2, metalness:0.5}));
+  panel.position.set(0, 0.2, 0.78);
+  group.add(panel);
+
+  // LED buttons on chest
+  const ledPositions = [[-0.35,0.4],[-0.35,0.1],[-0.35,-0.2],[0.35,0.4],[0.35,0.1],[0.35,-0.2]];
+  const ledColors = [0x00ffcc,0xff6b35,0x0044ff,0x00ffcc,0xff6b35,0x0044ff];
+  ledPositions.forEach(([lx,ly],i) => {
+    const ledGeo = new THREE.SphereGeometry(0.06, 6, 6);
+    const ledMat = new THREE.MeshStandardMaterial({color:ledColors[i], emissive:ledColors[i], emissiveIntensity:1.5});
+    const led = new THREE.Mesh(ledGeo, ledMat);
+    led.position.set(lx, 0.2+ly, 0.82);
+    group.add(led);
+  });
+
+  return group;
+}
+
+function buildArduinoBoard(boardDef) {
+  const group = new THREE.Group();
+  const [bw, bh, bl] = boardDef.size;
+  const scaleFactor = 1.2;
+
+  // PCB
+  const pcbGeo = new THREE.BoxGeometry(bw * scaleFactor, bh, bl * scaleFactor);
+  const pcbBoardMat = new THREE.MeshStandardMaterial({
+    color: boardDef.color,
+    roughness: 0.5,
+    metalness: 0.2
+  });
+  const pcb = new THREE.Mesh(pcbGeo, pcbBoardMat);
+  pcb.castShadow = true;
+  group.add(pcb);
+
+  const bwS = bw * scaleFactor;
+  const blS = bl * scaleFactor;
+
+  // Main microcontroller chip
+  if (boardDef.shape !== 'nano') {
+    const mcuGeo = new THREE.BoxGeometry(1.2, 0.15, 1.2);
+    const mcu = new THREE.Mesh(mcuGeo, chipMat);
+    mcu.position.set(0, bh/2 + 0.075, 0.5);
+    group.add(mcu);
+
+    // Chip pins (tiny gold lines)
+    for (let i = -2; i <= 2; i++) {
+      const pinGeo = new THREE.BoxGeometry(0.06, 0.06, 0.3);
+      const pin1 = new THREE.Mesh(pinGeo, goldMat);
+      pin1.position.set(i * 0.22, bh/2 + 0.06, 1.0);
+      group.add(pin1);
+      const pin2 = new THREE.Mesh(pinGeo, goldMat);
+      pin2.position.set(i * 0.22, bh/2 + 0.06, 0.0);
+      group.add(pin2);
+      const pinGeo2 = new THREE.BoxGeometry(0.3, 0.06, 0.06);
+      const pin3 = new THREE.Mesh(pinGeo2, goldMat);
+      pin3.position.set(-0.75, bh/2 + 0.06, i * 0.22 + 0.5);
+      group.add(pin3);
+      const pin4 = new THREE.Mesh(pinGeo2, goldMat);
+      pin4.position.set(0.75, bh/2 + 0.06, i * 0.22 + 0.5);
+      group.add(pin4);
+    }
+  } else {
+    // Nano/small board — inline chip
+    const mcuGeo = new THREE.BoxGeometry(0.8, 0.12, 0.8);
+    const mcu = new THREE.Mesh(mcuGeo, chipMat);
+    mcu.position.set(0, bh/2 + 0.06, 0);
+    group.add(mcu);
+  }
+
+  // USB connector
+  const usbGeo = new THREE.BoxGeometry(0.6, 0.35, 0.5);
+  const usbMat = new THREE.MeshStandardMaterial({color:0x888888, roughness:0.3, metalness:0.9});
+  const usb = new THREE.Mesh(usbGeo, usbMat);
+  usb.position.set(0, bh/2 + 0.175, -blS/2 - 0.15);
+  group.add(usb);
+
+  // Power jack (Uno/Mega style)
+  if (boardDef.shape !== 'nano') {
+    const jackGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.5, 12);
+    const jack = new THREE.Mesh(jackGeo, new THREE.MeshStandardMaterial({color:0x333333, roughness:0.5, metalness:0.6}));
+    jack.rotation.x = Math.PI/2;
+    jack.position.set(-bwS/2 + 0.4, bh/2 + 0.15, -blS/2 - 0.1);
+    group.add(jack);
+  }
+
+  // Pin headers along edges
+  const pinH = 0.3;
+  const numPinsLong = Math.floor(blS / 0.28);
+  const numPinsShort = Math.floor(bwS / 0.28);
+
+  for (let i = 0; i < numPinsLong; i++) {
+    const pGeo = new THREE.BoxGeometry(0.1, pinH, 0.1);
+    const pin = new THREE.Mesh(pGeo, goldMat);
+    pin.position.set(bwS/2 - 0.1, bh/2 + pinH/2, -blS/2 + 0.15 + i * 0.28);
+    group.add(pin);
+    const pin2 = new THREE.Mesh(pGeo, goldMat);
+    pin2.position.set(-bwS/2 + 0.1, bh/2 + pinH/2, -blS/2 + 0.15 + i * 0.28);
+    group.add(pin2);
+  }
+
+  // Status LEDs
+  const leds = [
+    { pos: [bwS/2 - 0.3, 0.2], color: 0x00ffcc },
+    { pos: [bwS/2 - 0.6, 0.2], color: 0xff6b35 },
+    { pos: [bwS/2 - 0.9, 0.2], color: 0xffff00 },
+  ];
+  leds.forEach(l => {
+    const ledGeo = new THREE.BoxGeometry(0.12, 0.08, 0.2);
+    const ledMat2 = new THREE.MeshStandardMaterial({ color: l.color, emissive: l.color, emissiveIntensity: 1.5 });
+    const led = new THREE.Mesh(ledGeo, ledMat2);
+    led.position.set(l.pos[0], bh/2 + 0.04, l.pos[1]);
+    group.add(led);
+  });
+
+  // Crystal oscillator
+  const xtalGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.35, 8);
+  const xtal = new THREE.Mesh(xtalGeo, silverMat);
+  xtal.position.set(-0.5, bh/2 + 0.175, 1.2);
+  group.add(xtal);
+
+  // Voltage regulator
+  const regGeo = new THREE.BoxGeometry(0.25, 0.4, 0.15);
+  const reg = new THREE.Mesh(regGeo, new THREE.MeshStandardMaterial({color:0x222222, roughness:0.5, metalness:0.5}));
+  reg.position.set(-bwS/2 + 0.5, bh/2 + 0.2, blS/2 - 0.5);
+  group.add(reg);
+
+  // Capacitors (small cylinders)
+  [[0.5, 1.5],[0.9, 1.5],[-0.5, 1.5]].forEach(([cx, cz]) => {
+    const capGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.25, 8);
+    const cap = new THREE.Mesh(capGeo, new THREE.MeshStandardMaterial({color:0x0a0a6e, roughness:0.4, metalness:0.3}));
+    cap.position.set(cx, bh/2 + 0.125, cz - blS/6);
+    group.add(cap);
+  });
+
+  // Traces (thin lines on board surface)
+  const traceGeo = new THREE.BoxGeometry(0.03, 0.01, blS * 0.4);
+  const trace = new THREE.Mesh(traceGeo, goldMat);
+  trace.position.set(0.2, bh/2 + 0.005, 0);
+  group.add(trace);
+
+  // Reset button
+  const btnGeo = new THREE.BoxGeometry(0.2, 0.1, 0.2);
+  const btn = new THREE.Mesh(btnGeo, new THREE.MeshStandardMaterial({color:0xff0000, roughness:0.5}));
+  btn.position.set(bwS/2 - 0.3, bh/2 + 0.05, blS/2 - 0.4);
+  group.add(btn);
+
+  group.rotation.x = -0.1;
+  return group;
+}
+
+function updateScene(board = null) {
+  // Remove old board
+  if (currentBoard) {
+    scene.remove(currentBoard);
+    currentBoard.traverse(obj => {
+      if (obj.geometry) obj.geometry.dispose();
+    });
+  }
+
+  if (board) {
+    currentBoard = buildArduinoBoard(board);
+  } else {
+    currentBoard = buildDefaultRobot();
+  }
+  scene.add(currentBoard);
+}
+
+// Init with robot
+updateScene(null);
+
+// Ground grid
+const gridHelper = new THREE.GridHelper(20, 20, 0x001a10, 0x001a10);
+gridHelper.position.y = -2.5;
+scene.add(gridHelper);
+
+// Resize handler
+function resizeRenderer() {
+  const container = canvas.parentElement;
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resizeRenderer);
+resizeRenderer();
+
+// Mouse drag rotation
+let isDragging = false, prevMouse = {x:0, y:0}, rotX = 0, rotY = 0;
+canvas.addEventListener('mousedown', e => { isDragging = true; prevMouse = {x:e.clientX, y:e.clientY}; autoRotate = false; });
+window.addEventListener('mouseup', () => { isDragging = false; });
+window.addEventListener('mousemove', e => {
+  if (!isDragging || !currentBoard) return;
+  const dx = e.clientX - prevMouse.x;
+  const dy = e.clientY - prevMouse.y;
+  rotY += dx * 0.01;
+  rotX += dy * 0.01;
+  currentBoard.rotation.y = rotY;
+  currentBoard.rotation.x = Math.max(-Math.PI/4, Math.min(Math.PI/4, rotX));
+  prevMouse = {x:e.clientX, y:e.clientY};
+});
+
+// Animation loop
+let t = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  t += 0.016;
+
+  if (currentBoard && autoRotate) {
+    currentBoard.rotation.y = t * 0.4;
+    // Floating animation for robot
+    if (currentBoardName === 'default') {
+      currentBoard.position.y = Math.sin(t * 0.8) * 0.15;
+    }
+  }
+
+  // Animate neon light
+  neonLight.position.x = Math.sin(t * 0.5) * 4;
+  neonLight.position.z = Math.cos(t * 0.5) * 4;
+
+  renderer.render(scene, camera);
+}
+animate();
+
+// BOARD LOADING
+function loadBoard() {
+  const input = document.getElementById('boardInput').value;
+  if (!input.trim()) return;
+
+  const board = matchBoard(input);
+  if (board) {
+    currentBoardName = 'board';
+    autoRotate = true;
+    rotX = 0; rotY = 0;
+    updateScene(board);
+    document.getElementById('board-title').textContent = board.title;
+    document.getElementById('board-specs').textContent = board.specs;
+
+    // Tilt board for nice view
+    if (currentBoard) {
+      currentBoard.rotation.x = -0.4;
+      currentBoard.position.y = 0;
+    }
+
+    // Add to chat
+    addAgentMsg(`🔩 Loaded **${board.title}** simulation!\n\n${board.specs}\n\nDrag to rotate the 3D model. Ask me anything about this board!`);
+  } else {
+    addAgentMsg(`I don't have a 3D model for "${input}" yet. Try: Arduino Uno, Mega, Nano, Pro Mini, Leonardo, Due, Micro, ESP32, ESP8266, Raspberry Pi Pico, or STM32.`);
+  }
+}
+
+document.getElementById('boardInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadBoard();
+});
+
+// =====================
+// AI CHAT AGENT
+// =====================
+const SYSTEM_PROMPT = `You are BOOT-UP, an expert AI engineering agent specializing in Arduino, robotics, electronics, embedded systems, and hardware engineering. 
+
+You have deep knowledge of:
+- All Arduino boards (Uno, Mega, Nano, Pro Mini, Due, Leonardo, etc.)
+- ESP32, ESP8266, Raspberry Pi, STM32, and other microcontrollers
+- Electronic components (sensors, actuators, motors, drivers)
+- Programming in C/C++, MicroPython
+- Circuit design and PCB layout
+- Robotics and automation systems
+- Protocols: I2C, SPI, UART, CAN, USB
+
+Be concise, technical, and helpful. Format responses clearly. When discussing code, use proper formatting.`;
+
+const conversationHistory = [];
+
+function addAgentMsg(text) {
+  const chatArea = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = 'msg agent';
+  div.innerHTML = `<div class="msg-header"><span class="dot"></span> BOOT-UP AGENT · ${new Date().toLocaleTimeString('en-US',{hour12:false})}</div>${text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong style="color:var(--neon)">$1</strong>').replace(/`(.*?)`/g,'<code style="background:rgba(0,255,204,0.1);padding:1px 5px;font-family:\'Share Tech Mono\',monospace;font-size:12px;color:var(--neon)">$1</code>')}`;
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function addUserMsg(text) {
+  const chatArea = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = 'msg user';
+  div.innerHTML = `<div class="msg-header">USER · ${new Date().toLocaleTimeString('en-US',{hour12:false})}</div>${text}`;
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  input.disabled = true;
+  document.querySelector('.send-btn').disabled = true;
+  addUserMsg(text);
+
+  conversationHistory.push({ role: 'user', content: text });
+
+  // Show typing
+  const typing = document.getElementById('typing');
+  const chatArea = document.getElementById('chatArea');
+  typing.style.display = 'block';
+  chatArea.appendChild(typing);
+  chatArea.scrollTop = chatArea.scrollHeight;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: conversationHistory
+      })
+    });
+
+    const data = await response.json();
+    typing.style.display = 'none';
+
+    const reply = data.content?.[0]?.text || 'Error getting response.';
+    conversationHistory.push({ role: 'assistant', content: reply });
+    addAgentMsg(reply);
+
+    input.disabled = false;
+    document.querySelector('.send-btn').disabled = false;
+    input.focus();
+
+    // Check if user mentioned a board in chat
+    const boardMatch = matchBoard(text);
+    if (boardMatch && text.toLowerCase().includes('arduino') || text.toLowerCase().includes('esp') || text.toLowerCase().includes('raspberry') || text.toLowerCase().includes('stm32')) {
+      if (boardMatch) {
+        document.getElementById('boardInput').value = text;
+        loadBoard();
+      }
+    }
+  } catch (err) {
+    typing.style.display = 'none';
+    input.disabled = false;
+    document.querySelector('.send-btn').disabled = false;
+    input.focus();
+    addAgentMsg(`Connection error. Please check your network. (${err.message})`);
+  }
+}
+
+// Auto-resize textarea
+const chatInput = document.getElementById('chatInput');
+chatInput.addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+chatInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+</script>
+</body>
+</html>
